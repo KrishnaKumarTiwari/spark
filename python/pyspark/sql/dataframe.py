@@ -1973,6 +1973,26 @@ class DataFrame(object):
         return self._jdf.stat().cov(col1, col2)
 
     @since(1.4)
+    def get_dummies(self, col, prefix, prefix_sep="_", dtype=None):
+        """
+        :param col: The name of the column to use for flattening data frame
+        :param prefix: prefix to add on new generated columns
+        :param prefix_sep: Separator between prefix and column namespace
+        :param dtype:
+        """
+        if dtype is None:
+            dtype = np.uint8
+            dtype = np.dtype(dtype)
+
+        if is_object_dtype(dtype):
+            raise ValueError("dtype=object is not a valid dtype for get_dummies")
+
+        categorical_values = self.select(col).distinct().rdd.flatMap(lambda x: x).collect()
+        categorical_expr = [F.when(F.col(col) == value, 1).otherwise(0).alias(prefix +prefix_sep+ value) for value in categorical_values]
+        flattened_data = self.select("ID", "TYPE", *categorical_expr)
+        return flattened_data
+
+    @since(1.4)
     def crosstab(self, col1, col2):
         """
         Computes a pair-wise frequency table of the given columns. Also known as a contingency
